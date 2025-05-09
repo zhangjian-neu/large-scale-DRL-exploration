@@ -135,7 +135,7 @@ class GroundTruthNodeManager:
             ground_truth_node.data.explored = 1
             ground_truth_node.data.visited = node.data.visited
 
-    def get_ground_truth_node_coords(location, ground_truth_map_info):
+    def get_ground_truth_node_coords(self, location, ground_truth_map_info):
         x_min = ground_truth_map_info.map_origin_x
         y_min = ground_truth_map_info.map_origin_y
         x_max = ground_truth_map_info.map_origin_x + (ground_truth_map_info.map.shape[1] - 1) * CELL_SIZE
