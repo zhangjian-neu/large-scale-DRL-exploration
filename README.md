@@ -20,7 +20,7 @@ We tested our planner in various version of these packages so you can just insta
 #### Training
 Download this repo and go into the folder:
 ```
-git clone https://github.com/marmotlab/ARiADNE.git
+git clone https://github.com/marmotlab/large-scale-DRL-exploration
 cd ARiADNE
 ```
 Launch your conda environment if any and run:
