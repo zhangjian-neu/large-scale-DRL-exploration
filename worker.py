@@ -7,9 +7,15 @@ import torch
 from env import Env
 from parameter import *
 
-
 class Worker:
+
+    '''
+    主要流程在 run episode 中，关注 get observation
+    '''
     def __init__(self, meta_agent_id, policy_net, q_net, global_step, device='cuda', greedy=False, save_image=False):
+        '''
+        q_net: actually, no use
+        '''
         self.device = device
         self.greedy = greedy
         self.metaAgentID = meta_agent_id
@@ -20,12 +26,13 @@ class Worker:
 
         self.env = Env(map_index=self.global_step, k_size=self.k_size, plot=save_image)
         self.local_policy_net = policy_net
-        self.local_q_net = q_net
+        self.local_q_net = q_net # no use
 
         self.current_node_index = 0
         self.travel_dist = 0
-        self.robot_position = self.env.start_position
+        self.robot_position = self.env.start_position # 从地图中默认位置启动
 
+        # 记录每个 episode、每个 step (指每次决策时刻，不是均匀的) 对应组中对应的数据
         self.episode_buffer = []
         self.perf_metrics = dict()
         for i in range(27):
@@ -218,16 +225,21 @@ class Worker:
     def run_episode(self, curr_episode):
         done = False
 
+        # 1. Observation-Orientation
         observations = self.get_observations()
         ground_truth_observations = self.get_ground_truth_observations()
         for i in range(128):
+
+            # 2. Decision
             self.save_observations(observations, ground_truth_observations)
             next_position, action_index = self.select_node(observations)
 
+            # 3. Action
             self.save_action(action_index)
             reward, done, self.robot_position, self.travel_dist = self.env.step(self.robot_position, next_position, self.travel_dist)
             self.save_reward_done(reward, done)
  
+            # 1. Observation-Orientation
             observations = self.get_observations()
             ground_truth_observations = self.get_ground_truth_observations()
             self.save_next_observations(observations, ground_truth_observations)

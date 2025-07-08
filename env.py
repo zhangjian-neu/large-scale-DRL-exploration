@@ -26,6 +26,7 @@ class Env():
         self.ground_truth_size = np.shape(self.ground_truth)  # (480, 640)
 
         # initialize robot_belief
+        # 在线维护地图
         self.robot_belief = np.ones(self.ground_truth_size) * 127  # unexplored 127
         self.downsampled_belief = None
         self.old_robot_belief = copy.deepcopy(self.robot_belief)
@@ -33,7 +34,7 @@ class Env():
         # initialize parameters
         self.resolution = 4
         self.sensor_range = 80
-        self.explored_rate = 0
+        self.explored_rate = 0 # explored/unexplored
 
         # initialize graph generator
         self.graph_generator = Graph_generator(map_size=self.ground_truth_size, sensor_range=self.sensor_range, k_size=k_size, plot=plot)
@@ -120,7 +121,7 @@ class Env():
         return reward, done, robot_position, travel_dist
 
     def import_ground_truth(self, map_index):
-        # occupied 1, free 255, unexplored 127
+        # occupied 1, free 255, unexplored 127, start 208
         ground_truth = (io.imread(map_index, 1) * 255).astype(int)
         robot_location = np.nonzero(ground_truth == 208)
         robot_location = np.array([np.array(robot_location)[1, 127], np.array(robot_location)[0, 127]])

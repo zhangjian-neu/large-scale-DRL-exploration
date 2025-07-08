@@ -1,10 +1,10 @@
-REPLAY_SIZE = 2500
-MINIMUM_BUFFER_SIZE = 1000
+REPLAY_SIZE = 2500              # 经验回放池最大的维度，避免溢出
+MINIMUM_BUFFER_SIZE = 1000      # 经验回放池最小的维度
 BATCH_SIZE = 64
 INPUT_DIM = 4
 EMBEDDING_DIM = 128
 NODE_PADDING_SIZE = 360
-K_SIZE = 20
+K_SIZE = 20     # 最终策略网络的输出维数，周围几个格子
 
 USE_GPU = False
 USE_GPU_GLOBAL = True

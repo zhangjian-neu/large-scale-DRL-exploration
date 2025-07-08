@@ -34,10 +34,13 @@ class Runner(object):
         return job_results, perf_metrics
 
     def job(self, weights_set, episode_number):
+        '''
+        运行一个回合 episode
+        '''
         print("starting episode {} on metaAgent {}".format(episode_number, self.meta_agent_id))
         # set the local weights to the global weight values from the master network
         self.set_policy_net_weights(weights_set[0])
-        self.set_q_net_weights(weights_set[1])
+        self.set_q_net_weights(weights_set[1]) # no use
 
         job_results, metrics = self.do_job(episode_number)
 

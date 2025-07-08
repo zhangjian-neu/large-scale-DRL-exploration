@@ -2,6 +2,9 @@ import numpy as np
 
 
 def collision_check(x0, y0, x1, y1, ground_truth, robot_belief):
+    '''
+    沿直线搜索，如果有碰撞，跳出循环。
+    '''
     x0 = x0.round()
     y0 = y0.round()
     x1 = x1.round()

@@ -5,7 +5,9 @@ class Edge:
         self.to_node = to_node
         self.length = length
 
-
+'''
+implement 2D A star
+'''
 class Graph:
     def __init__(self):
         self.nodes = set()

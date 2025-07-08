@@ -42,7 +42,14 @@ def writeToTensorBoard(writer, tensorboardData, curr_episode):
     writer.add_scalar(tag='Perf/Explored Rate', scalar_value=explored_rate, global_step=curr_episode)
     writer.add_scalar(tag='Perf/Success Rate', scalar_value=success_rate, global_step=curr_episode)
 
-
+'''
+主程序，对整个群体进行启动学习、存储等处理。
+- 主训练框架采用 SAC, 参考 https://hrl.boyuai.com/chapter/2/sac%E7%AE%97%E6%B3%95
+  基于最大熵和软策略迭代技术实现，目的是在优化策略时最大累积奖励同时使策略尽可能随机，提升泛化性，
+  本质是正则化。
+- 包含一个策略网略; 两个Q网络,缓解估值过高问题; 两个目标Q网络, 提升训练稳定性。
+- 使用自动调整熵正则项的方法优化最大熵部分的正则系数 alpha。
+'''
 def main():
     # use GPU/CPU for driver/worker
     device = torch.device('cuda') if USE_GPU_GLOBAL else torch.device('cpu')
@@ -65,6 +72,7 @@ def main():
     log_alpha_optimizer = optim.Adam([log_alpha], lr=1e-4)
 
     # target entropy for SAC
+    # 自动调整熵的正则项，H0
     entropy_target = 0.05 * (-np.log(1 / K_SIZE))
 
     curr_episode = 0
@@ -91,6 +99,7 @@ def main():
         print(log_alpha, log_alpha.requires_grad)
         print(global_policy_optimizer.state_dict()['param_groups'][0]['lr'])
 
+    # 令目标Q网络的初始参数和Q网络一样
     global_target_q_net1.load_state_dict(global_q_net1.state_dict())
     global_target_q_net2.load_state_dict(global_q_net2.state_dict())
     global_target_q_net1.eval()
@@ -133,6 +142,7 @@ def main():
         perf_metrics[n] = []
 
     # initialize training replay buffer
+    # 每一维存储 state、action等        
     experience_buffer = []
     for i in range(27):
         experience_buffer.append([])
@@ -149,19 +159,22 @@ def main():
             for job in done_jobs:
                 job_results, metrics, info = job
                 for i in range(len(experience_buffer)):
-                    experience_buffer[i] += job_results[i]
+                    experience_buffer[i] += job_results[i] # worker.py 中的 episode buffer
                 for n in metric_name:
                     perf_metrics[n].append(metrics[n])
 
             # launch new task
+            # 上面程序等待上一周期的环境交互采样完成，接下来开启新的采样程序。运行完成后，进程自动退出
             curr_episode += 1
             job_list.append(meta_agents[info['id']].job.remote(weights_set, curr_episode))
             
             # start training
+            # 如果数据不满足，则继续收集数据，此时仅更新 experience buffer 及 perf metrics
             if curr_episode % 1 == 0 and len(experience_buffer[0]) >= MINIMUM_BUFFER_SIZE:
                 print("training")
 
                 # keep the replay buffer size
+                # 保持经验回放的大小固定
                 if len(experience_buffer[0]) >= REPLAY_SIZE:
                     for i in range(len(experience_buffer)):
                         experience_buffer[i] = experience_buffer[i][-REPLAY_SIZE:]
@@ -174,6 +187,7 @@ def main():
                     sample_indices = random.sample(indices, BATCH_SIZE)
                     rollouts = []
                     for i in range(len(experience_buffer)):
+                        # 提取每一项采样内容
                         rollouts.append([experience_buffer[i][index] for index in sample_indices])
 
                     node_inputs_batch = torch.stack(rollouts[0]).to(device)
@@ -184,7 +198,7 @@ def main():
                     edge_mask_batch = torch.stack(rollouts[5]).to(device)
                     action_batch = torch.stack(rollouts[6]).to(device)
                     reward_batch = torch.stack(rollouts[7]).to(device)
-                    done_batch = torch.stack(rollouts[8]).to(device).to(device)
+                    done_batch = torch.stack(rollouts[8]).to(device).to(device) # 本次状态-动作是否没有后续了，是轨迹中最后一个状态
                     next_node_inputs_batch = torch.stack(rollouts[9]).to(device)
                     next_edge_inputs_batch = torch.stack(rollouts[10]).to(device)
                     next_current_inputs_batch = torch.stack(rollouts[11]).to(device)
@@ -206,6 +220,7 @@ def main():
                     critic_next_edge_mask_batch = torch.stack(rollouts[26]).to(device)
 
                     # SAC
+                    ## SAC 更新策略
                     with torch.no_grad():
                         q_values1, _ = dp_q_net1(critic_node_inputs_batch, critic_edge_inputs_batch, critic_current_inputs_batch, critic_node_padding_mask_batch, critic_edge_padding_mask_batch, critic_edge_mask_batch)
                         q_values2, _ = dp_q_net2(critic_node_inputs_batch, critic_edge_inputs_batch, critic_current_inputs_batch, critic_node_padding_mask_batch, critic_edge_padding_mask_batch, critic_edge_mask_batch)
@@ -219,11 +234,14 @@ def main():
                     policy_grad_norm = torch.nn.utils.clip_grad_norm_(global_policy_net.parameters(), max_norm=100, norm_type=2)
                     global_policy_optimizer.step()
 
+                    ## SAC 更新两个 Q 网络，使用目标Q网络，提高训练稳定性，see https://hrl.boyuai.com/chapter/2/dqn%E7%AE%97%E6%B3%95
                     with torch.no_grad():
+                        # all log pi(at/st)
                         next_logp = dp_policy(next_node_inputs_batch, next_edge_inputs_batch, next_current_inputs_batch, next_node_padding_mask_batch, next_edge_padding_mask_batch, next_edge_mask_batch)
                         next_q_values1, _ = dp_target_q_net1(critic_next_node_inputs_batch, critic_next_edge_inputs_batch, critic_next_current_inputs_batch, critic_next_node_padding_mask_batch, critic_next_edge_padding_mask_batch, critic_next_edge_mask_batch)
                         next_q_values2, _ = dp_target_q_net2(critic_next_node_inputs_batch, critic_next_edge_inputs_batch, critic_next_current_inputs_batch, critic_next_node_padding_mask_batch, critic_next_edge_padding_mask_batch, critic_next_edge_mask_batch)
                         next_q_values = torch.min(next_q_values1, next_q_values2)
+                        # V(s') = E[Q(st, at) - alpha log pi(at/st)] = sum (pi * Q(st, at) - alpha log pi(at/st) )
                         value_prime_batch = torch.sum(next_logp.unsqueeze(2).exp() * (next_q_values - log_alpha.exp() * next_logp.unsqueeze(2)), dim=1).unsqueeze(1)
                         target_q_batch = reward_batch + GAMMA * (1 - done_batch) * value_prime_batch
 
@@ -247,6 +265,7 @@ def main():
                     q_grad_norm = torch.nn.utils.clip_grad_norm_(global_q_net2.parameters(), max_norm=20000, norm_type=2)
                     global_q_net2_optimizer.step()
 
+                    ## SAC 更新 alpha
                     entropy = (logp * logp.exp()).sum(dim=-1)
                     alpha_loss = -(log_alpha * (entropy.detach() + entropy_target)).mean()
 

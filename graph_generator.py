@@ -67,6 +67,9 @@ class Graph_generator:
         return self.node_coords, self.graph.edges, self.node_utility, self.guidepost
 
     def update_graph(self, robot_position, robot_belief, old_robot_belief, frontiers, old_frontiers):
+        '''
+        
+        '''
         # add uniform points in the new free area to the node coords
         new_free_area = self.free_area((robot_belief - old_robot_belief > 0) * 255)
         free_area_to_check = new_free_area[:, 0] + new_free_area[:, 1] * 1j
@@ -226,6 +229,7 @@ class Graph_generator:
                 error += dx
         return collision
 
+    # no use
     def find_shortest_path(self, current, destination, node_coords):
         start_node = str(self.find_index_from_coords(node_coords, current))
         end_node = str(self.find_index_from_coords(node_coords, destination))
