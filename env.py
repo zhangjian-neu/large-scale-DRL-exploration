@@ -39,7 +39,8 @@ class Env():
         # initialize graph generator
         self.graph_generator = Graph_generator(map_size=self.ground_truth_size, sensor_range=self.sensor_range, k_size=k_size, plot=plot)
         self.graph_generator.route_node.append(self.start_position)
-        self.node_coords, self.graph, self.node_utility, self.guidepost = None, None, None, None
+        self.node_coords = None     # 已探索的区域中自由部分的均匀采样节点的坐标
+        self.graph, self.node_utility, self.guidepost = None, None, None
         self.frontiers = None
 
         # initialize ground truth graph
@@ -69,6 +70,7 @@ class Env():
                                                      self.ground_truth)\
 
         # downsampled belief has lower resolution than robot belief
+        # 用于加速查找 frontiers
         self.downsampled_belief = block_reduce(self.robot_belief.copy(), block_size=(self.resolution, self.resolution),
                                                func=np.min)
         self.frontiers = self.find_frontier()

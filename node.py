@@ -7,7 +7,7 @@ class Node():
         self.observable_frontiers = []
         self.sensor_range = 80
         self.initialize_observable_frontiers(frontiers, robot_belief)
-        self.utility = self.get_node_utility()
+        self.utility = self.get_node_utility() # e.g. len(self.observable_frontiers)
         if self.utility == 0:
             self.zero_utility_node = True
         else:

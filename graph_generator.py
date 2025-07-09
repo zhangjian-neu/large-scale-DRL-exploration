@@ -21,7 +21,7 @@ class Graph_generator:
         self.route_node = []
         self.nodes_list = []
         self.node_utility = None
-        self.guidepost = None
+        self.guidepost = None   # visited or not
 
     def edge_clear_all_nodes(self):
         self.graph = Graph()
@@ -74,12 +74,14 @@ class Graph_generator:
         new_free_area = self.free_area((robot_belief - old_robot_belief > 0) * 255)
         free_area_to_check = new_free_area[:, 0] + new_free_area[:, 1] * 1j
         uniform_points_to_check = self.uniform_points[:, 0] + self.uniform_points[:, 1] * 1j
+        # 返回既是自由区域，又在均匀采样网格点上的索引
         _, _, candidate_indices = np.intersect1d(free_area_to_check, uniform_points_to_check, return_indices=True)
         new_node_coords = self.uniform_points[candidate_indices]
         old_node_coords = copy.deepcopy(self.node_coords)
         self.node_coords = np.concatenate((self.node_coords, new_node_coords))
 
         # update the collision free graph
+        # 更新图结构，边维护，仅方圆160m以内的？
         for coords in new_node_coords:
             self.find_k_neighbor(coords, self.node_coords, robot_belief)
         dist_to_robot = np.linalg.norm(robot_position - old_node_coords, axis=1)
@@ -146,6 +148,10 @@ class Graph_generator:
         return coords
 
     def find_k_neighbor(self, coords, node_coords, robot_belief):
+        '''
+        返回当前节点的邻近节点索引，并在搜索过程中构造边
+        '''
+
         dist_list = np.linalg.norm((coords - node_coords), axis=-1)
         sorted_index = np.argsort(dist_list)
         k = 0
@@ -170,6 +176,9 @@ class Graph_generator:
         return neighbor_index_list
 
     def find_k_neighbor_all_nodes(self, node_coords, robot_belief):
+        '''
+        对 node_coords 找 邻近节点，并更新边
+        '''
         X = node_coords
         if len(node_coords) >= self.k_size:
             knn = NearestNeighbors(n_neighbors=self.k_size)
