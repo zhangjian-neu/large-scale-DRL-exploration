@@ -7,9 +7,11 @@ from graph import Graph, a_star
 
 
 class Graph_generator:
+    """augmanted graph G'_t
+    """
     def __init__(self, map_size, k_size, sensor_range, plot=False):
         self.k_size = k_size
-        self.graph = Graph()
+        self.graph = Graph() # collision-free graph G_t
         self.node_coords = None
         self.plot = plot
         self.x = []
@@ -20,8 +22,8 @@ class Graph_generator:
         self.sensor_range = sensor_range
         self.route_node = []
         self.nodes_list = []
-        self.node_utility = None
-        self.guidepost = None   # visited or not
+        self.node_utility = None    # u_i
+        self.guidepost = None       # b_i, visited or not
 
     def edge_clear_all_nodes(self):
         self.graph = Graph()
@@ -33,6 +35,16 @@ class Graph_generator:
         self.graph.clear_edge(node_index)
 
     def generate_graph(self, robot_location, robot_belief, frontiers):
+        """_summary_
+
+        Args:
+            robot_location (_type_): _description_
+            robot_belief (_type_): _description_
+            frontiers (_type_): 用于计算节点的 utility
+
+        Returns:
+            _type_: _description_
+        """
         # get node_coords by finding the uniform points in free area
         free_area = self.free_area(robot_belief)
         free_area_to_check = free_area[:, 0] + free_area[:, 1] * 1j
@@ -67,10 +79,20 @@ class Graph_generator:
         return self.node_coords, self.graph.edges, self.node_utility, self.guidepost
 
     def update_graph(self, robot_position, robot_belief, old_robot_belief, frontiers, old_frontiers):
-        '''
-        
-        '''
+        """确定新增已探索空闲区域的采样点，
+
+        Args:
+            robot_position (_type_): _description_
+            robot_belief (_type_):      本周期新更新的地图
+            old_robot_belief (_type_):  上周期新更新的地图
+            frontiers (_type_):         本周期新计算的前沿
+            old_frontiers (_type_):     上周期新计算的前沿
+        Returns:
+            _type_: _description_
+        """
+
         # add uniform points in the new free area to the node coords
+        # 新增加的区域中的地图采样点
         new_free_area = self.free_area((robot_belief - old_robot_belief > 0) * 255)
         free_area_to_check = new_free_area[:, 0] + new_free_area[:, 1] * 1j
         uniform_points_to_check = self.uniform_points[:, 0] + self.uniform_points[:, 1] * 1j
@@ -97,6 +119,7 @@ class Graph_generator:
         # update the observable frontiers through the change of frontiers
         old_frontiers_to_check = old_frontiers[:, 0] + old_frontiers[:, 1] * 1j
         new_frontiers_to_check = frontiers[:, 0] + frontiers[:, 1] * 1j
+        # 在新地图中被验证不是前沿的点，需要及时剔除
         observed_frontiers_index = np.where(
             np.isin(old_frontiers_to_check, new_frontiers_to_check, assume_unique=True) == False)
         new_frontiers_index = np.where(
@@ -105,13 +128,16 @@ class Graph_generator:
         new_frontiers = frontiers[new_frontiers_index]
         for node in self.nodes_list:
             if np.linalg.norm(node.coords - robot_position) > 2 * self.sensor_range:
+                # 位置太远，感知不会影响
                 pass
             elif node.zero_utility_node is True:
+                # 在原图中没有前沿，新图中更不可能有？因为新图只会比原图更大。
                 pass
             else:
                 node.update_observable_frontiers(observed_frontiers, new_frontiers, robot_belief)
 
         for new_coords in new_node_coords:
+            # 将新空闲采样点入列表
             node = Node(new_coords, frontiers, robot_belief)
             self.nodes_list.append(node)
 

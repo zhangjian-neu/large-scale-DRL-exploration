@@ -7,7 +7,7 @@ from model import PolicyNet
 from test_worker import TestWorker
 from test_parameter import *
 
-NUM_TEST = 100
+NUM_TEST = 10 # 100
 
 
 def run_test():

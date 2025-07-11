@@ -39,11 +39,22 @@ class Worker:
             self.episode_buffer.append([])
 
     def get_observations(self):
+        """根据已有机器人信息、图信息构造观测
+
+        Returns:
+            观测，包括以下六项
+            node_inputs: (x_i , y_i , u_i , b_i )
+            edge_inputs: 
+            current_index: 当前机器人位置对应的采样点索引
+            node_padding_mask: 指示哪些是 padding 的节点
+            edge_padding_mask: 指示哪些是 padding 的边
+            edge_mask:
+        """
         # get observations
         node_coords = copy.deepcopy(self.env.node_coords)
         graph = copy.deepcopy(self.env.graph)
         node_utility = copy.deepcopy(self.env.node_utility)
-        guidepost = copy.deepcopy(self.env.guidepost)
+        guidepost = copy.deepcopy(self.env.guidepost) # visited or not
 
         # normalize observations
         node_coords = node_coords / 640

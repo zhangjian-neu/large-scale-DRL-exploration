@@ -204,6 +204,13 @@ class Decoder(nn.Module):
 
 
 class PolicyNet(nn.Module):
+    """编码器-解码器策略网络
+            输入: 4 维, (x_i , y_i , u_i , b_i )
+            embedding: 128维, 人为指定的特征维数
+
+    Args:
+        nn (_type_): _description_
+    """
     def __init__(self, input_dim, embedding_dim):
         super(PolicyNet, self).__init__()
         self.initial_embedding = nn.Linear(input_dim, embedding_dim) # layer for non-end position

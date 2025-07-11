@@ -143,24 +143,30 @@ class Env():
     def check_done(self):
         done = False
         if self.test:
+            # 已探索的自由区域接近真实
             if np.sum(self.ground_truth == 255) - np.sum(self.robot_belief == 255) <= 250:
                 done = True
         elif np.sum(self.node_utility) == 0:
+            # 无前沿点
             done = True
         return done
 
     def calculate_reward(self, dist, frontiers):
         reward = 0
-        reward -= dist / 64
+        reward -= dist / 64 # rc，distance
 
         # check the num of observed frontiers
         frontiers_to_check = frontiers[:, 0] + frontiers[:, 1] * 1j
         pre_frontiers_to_check = self.frontiers[:, 0] + self.frontiers[:, 1] * 1j
-        frontiers_num = np.intersect1d(frontiers_to_check, pre_frontiers_to_check).shape[0]
+        frontiers_in_both_num = np.intersect1d(frontiers_to_check, pre_frontiers_to_check).shape[0]
+        frontiers_num = frontiers_to_check.shape[0]
         pre_frontiers_num = pre_frontiers_to_check.shape[0]
-        delta_num = pre_frontiers_num - frontiers_num
 
-        reward += delta_num / 50
+        # 以下不是bug，整个探索的目标就是消除所有已知的前沿，对于动作 a_t 消除尽量多的前沿就是奖励，而不是探索更多前沿。
+        delta_num = pre_frontiers_num - frontiers_in_both_num # bug?
+        # delta_num = frontiers_num - frontiers_in_both_num
+
+        reward += delta_num / 50 # re, the number of observed frontiers associated with a_t
 
         return reward
 
@@ -187,6 +193,11 @@ class Env():
         return dist
 
     def find_frontier(self):
+        """依靠降采样地图计算前沿
+
+        Returns:
+            _type_: _description_
+        """
         # find frontiers from downsampled_belief by checking nearby 8 cells for each cell
         y_len = self.downsampled_belief.shape[0]
         x_len = self.downsampled_belief.shape[1]

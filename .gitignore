@@ -1,5 +1,9 @@
 .idea/
+.vscode/
 __pycache__
 train/
 results/
+model/
+gifs/
+
 

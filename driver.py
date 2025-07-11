@@ -11,7 +11,9 @@ from model import PolicyNet, QNet
 from runner import RLRunner
 from parameter import *
 
-ray.init()
+
+ray.init() # in parallel
+#ray.init(local_mode=True) # in series
 print("Welcome to RL autonomous exploration!")
 
 writer = SummaryWriter(train_path)

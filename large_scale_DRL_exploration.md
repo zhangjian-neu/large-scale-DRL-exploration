@@ -20,7 +20,6 @@
     - 策略网络输出： Pointer networks, (1, K_SIZE)
     - 注意： EncoderLayer 和 DecoderLayer 有问题啊，**与原始论文中的normalization 顺序和位置不同**，与DCMRTA 中的实现也不同。 标准的 transformer 实现： https://github.com/hyunwoongko/transformer
 
-
 ### 潜在改进点
 
 - 均匀分布网格，对于模型窄区域部分，可能导致无法通行。
